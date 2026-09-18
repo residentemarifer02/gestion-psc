@@ -6,19 +6,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Proveedor extends Model
+class Cliente extends Model
 {
     use HasFactory;
 
-    protected $table = 'proveedores';
+    protected $table = 'clientes';
 
     protected $fillable = [
-        'codigodp',
+        'codigo',
         'nombre',
-        'direccion',
-        'horarios_trabajo',
-        'contacto_telefono',
-        'contacto_email',
         'activo',
     ];
 
@@ -29,8 +25,8 @@ class Proveedor extends Model
         ];
     }
 
-    public function productos(): HasMany
+    public function movimientos(): HasMany
     {
-        return $this->hasMany(ProveedorProducto::class);
+        return $this->hasMany(Movimiento::class);
     }
 }

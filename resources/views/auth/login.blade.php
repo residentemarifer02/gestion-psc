@@ -1,13 +1,14 @@
 <x-guest-layout>
-    <div class="min-h-screen flex items-center justify-center bg-surface-soft px-4">
-        <div class="w-full max-w-md bg-surface shadow-lg rounded-lg overflow-hidden">
+    <div class="min-h-screen flex items-center justify-center px-4"
+         style="background: linear-gradient(135deg, #1E3A5F 0%, #14283F 100%);">
+        <div class="w-full max-w-md bg-surface shadow-2xl rounded-xl overflow-hidden">
 
-            <div class="bg-primary px-8 py-6 text-center">
-                <h1 class="text-xl font-bold text-white">Consultoría y Construcciones PSC</h1>
-                <p class="text-white/80 text-sm mt-1">Sistema de gestión de recursos y actividades</p>
+            <div class="px-8 pt-8 pb-4 text-center border-b border-surface-soft">
+                <img src="{{ asset('images/psc-logo.png') }}" alt="PSC" class="mx-auto h-24 w-auto object-contain">
+                <p class="text-ink-muted text-sm mt-3">Sistema de gestión de recursos y actividades</p>
             </div>
 
-            <div class="p-8">
+            <div class="px-8 py-6 bg-surface-soft/40">
                 <x-auth-session-status class="mb-4" :status="session('status')" />
 
                 @if ($errors->any())
@@ -33,13 +34,19 @@
                                    focus:border-primary focus:ring-primary shadow-sm">
                     </div>
 
-                    <div class="mt-4">
+                    <div class="mt-4" x-data="{ verPassword: false }">
                         <label for="password" class="block text-sm font-semibold text-ink-label mb-1">
                             Contraseña
                         </label>
-                        <input id="password" type="password" name="password" required autocomplete="current-password"
-                            class="block w-full rounded-md border-ink-muted/40 text-ink placeholder:text-ink-muted
-                                   focus:border-primary focus:ring-primary shadow-sm">
+                        <div class="relative">
+                            <input :type="verPassword ? 'text' : 'password'" id="password" name="password" required autocomplete="current-password"
+                                class="block w-full rounded-md border-ink-muted/40 text-ink placeholder:text-ink-muted
+                                       focus:border-primary focus:ring-primary shadow-sm pr-16">
+                            <button type="button" @click="verPassword = !verPassword"
+                                class="absolute inset-y-0 right-0 px-3 text-sm text-primary hover:text-primary-dark">
+                                <span x-text="verPassword ? 'Ocultar' : 'Ver'"></span>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="flex items-center justify-between mt-4">

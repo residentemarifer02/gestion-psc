@@ -14,6 +14,7 @@ class ProveedorProducto extends Model
     protected $fillable = [
         'proveedor_id',
         'nombre_producto',
+        'unidad',
         'precio_referencia',
     ];
 

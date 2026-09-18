@@ -11,7 +11,7 @@ class ProveedorController extends Controller
 {
     public function index()
     {
-        $proveedores = Proveedor::with('productos')->orderBy('nombre')->get();
+        $proveedores = Proveedor::with('productos.historialPrecios')->orderBy('nombre')->get();
 
         return view('proveedores.index', compact('proveedores'));
     }
@@ -24,16 +24,40 @@ class ProveedorController extends Controller
     public function store(Request $request)
     {
         $validado = $request->validate([
+            'codigodp' => 'required|string|max:50|unique:proveedores,codigodp',
             'nombre' => 'required|string|max:255',
             'direccion' => 'nullable|string|max:255',
             'horarios_trabajo' => 'nullable|string|max:255',
             'contacto_telefono' => 'nullable|string|max:50',
             'contacto_email' => 'nullable|email|max:255',
+            'nombre_producto' => 'required|string|max:255',
+            'unidad' => 'required|string|max:50',
+            'precio_referencia' => 'required|numeric|min:0',
         ]);
 
-        Proveedor::create($validado);
+        $proveedor = Proveedor::create([
+            'codigodp' => $validado['codigodp'],
+            'nombre' => $validado['nombre'],
+            'direccion' => $validado['direccion'] ?? null,
+            'horarios_trabajo' => $validado['horarios_trabajo'] ?? null,
+            'contacto_telefono' => $validado['contacto_telefono'] ?? null,
+            'contacto_email' => $validado['contacto_email'] ?? null,
+        ]);
 
-        return redirect()->route('proveedores.index')->with('status', 'Proveedor creado correctamente.');
+        $producto = $proveedor->productos()->create([
+            'nombre_producto' => $validado['nombre_producto'],
+            'unidad' => $validado['unidad'],
+            'precio_referencia' => $validado['precio_referencia'],
+        ]);
+
+        HistorialPrecioProducto::create([
+            'proveedor_producto_id' => $producto->id,
+            'precio' => $validado['precio_referencia'],
+            'fecha' => now()->toDateString(),
+            'capturado_por' => $request->user()->id,
+        ]);
+
+        return redirect()->route('proveedores.index')->with('status', 'Proveedor y producto registrados correctamente.');
     }
 
     public function edit(Proveedor $proveedor)
@@ -46,6 +70,7 @@ class ProveedorController extends Controller
     public function update(Request $request, Proveedor $proveedor)
     {
         $validado = $request->validate([
+            'codigodp' => 'required|string|max:50|unique:proveedores,codigodp,' . $proveedor->id,
             'nombre' => 'required|string|max:255',
             'direccion' => 'nullable|string|max:255',
             'horarios_trabajo' => 'nullable|string|max:255',
@@ -60,7 +85,11 @@ class ProveedorController extends Controller
 
     public function destroy(Proveedor $proveedor)
     {
-        $proveedor->delete();
+        // TODO: cuando exista el módulo de Órdenes/Movimientos, validar aquí que este
+        // proveedor no esté referenciado en ningún movimiento antes de permitir borrarlo.
+        // Por ahora ese módulo no existe, así que no hay nada que lo detenga.
+
+        $proveedor->delete(); // borra en cascada sus productos e historial de precios
 
         return redirect()->route('proveedores.index')->with('status', 'Proveedor eliminado.');
     }
@@ -69,31 +98,36 @@ class ProveedorController extends Controller
     {
         $validado = $request->validate([
             'nombre_producto' => 'required|string|max:255',
+            'unidad' => 'required|string|max:50',
             'precio_referencia' => 'required|numeric|min:0',
             'fecha' => 'nullable|date',
         ]);
 
         $producto = $proveedor->productos()->create([
             'nombre_producto' => $validado['nombre_producto'],
+            'unidad' => $validado['unidad'],
             'precio_referencia' => $validado['precio_referencia'],
         ]);
 
-        // el primer precio también entra al historial
         HistorialPrecioProducto::create([
             'proveedor_producto_id' => $producto->id,
             'precio' => $validado['precio_referencia'],
             'fecha' => $validado['fecha'] ?? now()->toDateString(),
-            'capturado_por' => auth()->id(),
+            'capturado_por' => $request->user()->id,
         ]);
 
-        return redirect()->route('proveedores.edit', $proveedor)->with('status', 'Producto agregado.');
+        return back()->with('status', 'Producto agregado.');
     }
 
     public function eliminarProducto(Proveedor $proveedor, ProveedorProducto $producto)
     {
+        if ($producto->historialPrecios()->count() > 1) {
+            return back()->with('status', 'No se eliminó: este producto ya tiene historial de precios registrado.');
+        }
+
         $producto->delete();
 
-        return redirect()->route('proveedores.edit', $proveedor)->with('status', 'Producto eliminado.');
+        return back()->with('status', 'Producto eliminado.');
     }
 
     public function registrarNuevoPrecio(Request $request, Proveedor $proveedor, ProveedorProducto $producto)
@@ -110,11 +144,10 @@ class ProveedorController extends Controller
             'proveedor_producto_id' => $producto->id,
             'precio' => $validado['precio'],
             'fecha' => $fecha,
-            'capturado_por' => auth()->id(),
+            'capturado_por' => $request->user()->id,
             'observaciones' => $validado['observaciones'] ?? null,
         ]);
 
-        // actualiza el precio "actual" solo si la fecha nueva es la más reciente
         $masReciente = $producto->historialPrecios()->first();
         if ($masReciente && $masReciente->fecha->toDateString() === $fecha) {
             $producto->update(['precio_referencia' => $validado['precio']]);
